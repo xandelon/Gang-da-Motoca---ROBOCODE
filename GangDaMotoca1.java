@@ -13,25 +13,25 @@ public class GangueDaMotocax1 extends AdvancedRobot {
   HashMap<String, EnemyBot> enemies = new HashMap<String, EnemyBot>();
 
   public void run() {
-    
+    // Mudança de cor
     setBodyColor(new Color(255, 105, 180));
     setRadarColor(new Color(255, 105, 180));
     setGunColor(new Color(255, 105, 180));
     setBulletColor(new Color(255, 105, 180));
 
-    
+    // Gira a arma e o radar infinitamente ate achar um inimigo
     setAdjustGunForRobotTurn(true);
     setAdjustRadarForGunTurn(true);
 
-    
+    // Movimento padrão
     while (true) {
-      turnRadarRightRadians(Double.MAX_VALUE); 
+      turnRadarRightRadians(Double.MAX_VALUE); // Movimento de radar padrão
       execute();
     }
   }
 
   public void onScannedRobot(ScannedRobotEvent e) {
-    
+    // Atualiza a informação do robô
     EnemyBot enemy = enemies.get(e.getName());
     if (enemy == null) {
       enemy = new EnemyBot();
@@ -39,18 +39,18 @@ public class GangueDaMotocax1 extends AdvancedRobot {
     }
     enemy.update(e);
 
-    
+    // Escolhe o melhor alvo
     EnemyBot target = chooseTarget();
 
-    
+    // Vira o robô em direção ao inimigo
     double absBearing = e.getBearingRadians() + getHeadingRadians();
     setTurnRightRadians(Utils.normalRelativeAngle(absBearing - getHeadingRadians() + Math.PI / 2 - moveDirection * Math.PI / 4));
 
-    
-    double distance = e.getDistance();  
+    // Previsão de movimento circular
+    double distance = e.getDistance();  // obtém a distância até o robô inimigo
     double bulletPower;
 	
-    if (distance > 500) {	
+    if (distance > 500) {	//Atira de acordo com a distancia do robô inimigo
         bulletPower = 0.5;
     } else if (distance > 250) {
         bulletPower = 1.5;
@@ -89,14 +89,16 @@ public class GangueDaMotocax1 extends AdvancedRobot {
     setTurnGunRightRadians(Utils.normalRelativeAngle(theta - getGunHeadingRadians()));
     fire(bulletPower);
 
+    // Detecta a perda de energia do inimigo
     double energyDrop = enemyEnergy - e.getEnergy();
     if (energyDrop > 0 && energyDrop <= 3) {
-       
+      // Se o inimigo disparou uma bala, muda de direção
       moveDirection = -moveDirection;
       setAhead(50 * moveDirection);
     }
     enemyEnergy = e.getEnergy();
 
+    // Rastreia o inimigo com o radar
     double radarTurn = Utils.normalRelativeAngle(absBearing - getRadarHeadingRadians());
     double extraTurn = Math.min(Math.atan(36.0 / distance), Rules.RADAR_TURN_RATE_RADIANS);
     if (radarTurn < 0)
@@ -105,59 +107,62 @@ public class GangueDaMotocax1 extends AdvancedRobot {
       radarTurn += extraTurn;
     setTurnRadarRightRadians(radarTurn);
 
+    // Movimento oscilatório
     if (distance > 150) {
         setAhead((distance / 4 + 25) * moveDirection);
     } else {
         setBack((distance / 4 + 25) * moveDirection);
     }
 
+    // Executa todas as ações pendentes
     execute();
   }
 
   private EnemyBot chooseTarget() {
     EnemyBot target = null;
     for (EnemyBot enemy : enemies.values()) {
-      if (target == null || enemy.getEnergy() < target.getEnergy()) {
+      if (target == null || enemy.getDistance() < target.getDistance()) {
         target = enemy;
       }
     }
     return target;
   }
 
+
   public void onHitWall(HitWallEvent e) {
+  // Inverte a direção do movimento
+  moveDirection = -moveDirection;
 
-   moveDirection = -moveDirection;
+  // Vira o robô para se mover ao longo da parede
+  setTurnRight(90 - e.getBearing()); // Isso fará o robô se mover ao longo da parede
 
-  setTurnRight(90 - e.getBearing()); 
+  // Move o robô para longe da parede
+  setAhead(100 * moveDirection); // Move uma distância fixa ao longo da parede
 
-  setAhead(100 * moveDirection); 
-
+  // Executa todas as ações pendentes
   execute();
   }
 
   public void onHitRobot(HitRobotEvent e) {
+    // Inverte a direção do movimento
     moveDirection = -moveDirection;
 
-     setTurnRight(90 - e.getBearing());
+    // Vira o robô para se mover em uma direção perpendicular ao robô inimigo
+    setTurnRight(90 - e.getBearing());
 
+    // Executa todas as ações pendentes
     execute();
   }
 }
 
 class EnemyBot {
   private double distance;
-  private double energy;
 
   public void update(ScannedRobotEvent e) {
     distance = e.getDistance();
-    energy = e.getEnergy();
   }
 
   public double getDistance() {
     return distance;
-  }
-
-  public double getEnergy() {
-    return energy;
   }
 }

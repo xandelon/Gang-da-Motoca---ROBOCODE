@@ -6,7 +6,7 @@ import java.awt.geom.Point2D;
 import java.util.HashMap;
 import java.util.Random;
 
-public class GangueDaMotocax1 extends AdvancedRobot {
+public class GangueDaMotoca1 extends AdvancedRobot {
   int moveDirection = 1;
   double enemyEnergy = 100;
   Random random = new Random();

@@ -3,14 +3,14 @@ import robocode.*;
 import robocode.util.Utils;
 import java.awt.Color;
 import java.awt.geom.Point2D;
-import java.util.Random;
 import java.util.HashMap;
+import java.util.Random;
 
 public class GangueDaMotoca extends AdvancedRobot {
   int moveDirection = 1; // DireÃ§Ã£o do movimento do robÃ´
   double enemyEnergy = 100; // Energia do inimigo
-  Random random = new Random(); // Gerador de nÃºmeros aleatÃ³rios
-  HashMap<String, EnemyBot> enemies = new HashMap<String, EnemyBot>(); // Mapa para armazenar os inimigos detectados
+  Random random = new Random(); // Objeto para gerar nÃºmeros aleatÃ³rios
+  HashMap<String, EnemyBot> enemies = new HashMap<String, EnemyBot>(); // Mapa para armazenar os inimigos
 
   // MÃ©todo principal do robÃ´
   public void run() {
@@ -20,44 +20,38 @@ public class GangueDaMotoca extends AdvancedRobot {
     setGunColor(new Color(255, 105, 180));
     setBulletColor(new Color(255, 105, 180));
 
-    // ConfiguraÃ§Ã£o para o canhÃ£o e o radar se moverem independentemente do robÃ´
+    // ConfiguraÃ§Ã£o do ajuste do canhÃ£o e do radar
     setAdjustGunForRobotTurn(true);
     setAdjustRadarForGunTurn(true);
 
     // Loop principal do robÃ´
     while (true) {
-      // Gira o radar para a direita continuamente
-      turnRadarRightRadians(Double.MAX_VALUE);
-      // Executa as aÃ§Ãµes do robÃ´
-      execute();
+      turnRadarRightRadians(Double.MAX_VALUE); // Gira o radar para a direita
+      execute(); // Executa todas as aÃ§Ãµes pendentes
     }
   }
 
-  // MÃ©todo chamado quando um robÃ´ inimigo Ã© detectado
+  // MÃ©todo chamado quando um robÃ´ Ã© escaneado
   public void onScannedRobot(ScannedRobotEvent e) {
-    // ObtÃ©m o inimigo do mapa de inimigos
+    // Atualiza as informaÃ§Ãµes do inimigo
     EnemyBot enemy = enemies.get(e.getName());
-    // Se o inimigo nÃ£o existir no mapa, cria um novo
     if (enemy == null) {
       enemy = new EnemyBot();
       enemies.put(e.getName(), enemy);
     }
-    // Atualiza as informaÃ§Ãµes do inimigo
     enemy.update(e, this);
 
-    // Escolhe o alvo com base na energia
+    // Escolhe o alvo com base na distÃ¢ncia
     EnemyBot target = chooseTarget();
 
-    // Calcula o Ã¢ngulo absoluto do inimigo
+    // Calcula a direÃ§Ã£o absoluta do inimigo
     double absBearing = e.getBearingRadians() + getHeadingRadians();
-    // Define a direÃ§Ã£o do robÃ´
+    // Ajusta a direÃ§Ã£o do robÃ´ em relaÃ§Ã£o ao inimigo
     setTurnRightRadians(Utils.normalRelativeAngle(absBearing - getHeadingRadians() + Math.PI / 2 - moveDirection * Math.PI / 4));
 
-    // Calcula a distÃ¢ncia para o inimigo
+    // Calcula a potÃªncia do tiro com base na distÃ¢ncia do inimigo
     double distance = e.getDistance();
-    // Define a potÃªncia do tiro com base na distÃ¢ncia
     double bulletPower;
-  
     if (distance > 500) {
         bulletPower = 0.5;
     } else if (distance > 250) {
@@ -66,69 +60,61 @@ public class GangueDaMotoca extends AdvancedRobot {
         bulletPower = 3.0;
     }
 
-    // Se a energia do robÃ´ for maior que 3
+    // Atira se a energia do robÃ´ for maior que 3
     if (getEnergy() > 3) {
       // Calcula a chance de acertar o tiro
       double hitChance = 1 - (distance / getBattleFieldWidth());
-      // Se a chance de acertar for maior que um nÃºmero aleatÃ³rio
+      // Atira se a chance de acertar for maior que um nÃºmero aleatÃ³rio
       if (random.nextDouble() < hitChance) {
         // Calcula a velocidade da bala
         double bulletSpeed = 20 - bulletPower * 3;
         // Calcula o tempo que a bala levarÃ¡ para atingir o inimigo
         long time = (long)(distance / bulletSpeed);
         
-        // Calcula a futura posiÃ§Ã£o x do inimigo
+        // Calcula a posiÃ§Ã£o futura do inimigo
         double futureX = enemy.getX() + Math.sin(enemy.getHeadingRadians()) * enemy.getVelocity() * time;
-        // Calcula a futura posiÃ§Ã£o y do inimigo
         double futureY = enemy.getY() + Math.cos(enemy.getHeadingRadians()) * enemy.getVelocity() * time;
-        // Calcula o Ã¢ngulo futuro do inimigo
+        // Calcula a direÃ§Ã£o futura do inimigo
         double futureBearing = Utils.normalAbsoluteAngle(Math.atan2(futureX - getX(), futureY - getY()));
         
-        // Define a direÃ§Ã£o do canhÃ£o
+        // Ajusta a direÃ§Ã£o do canhÃ£o e atira
         setTurnGunRightRadians(Utils.normalRelativeAngle(futureBearing - getGunHeadingRadians()));
-        // Atira
         setFire(bulletPower);
       }
     }
 
-    // Calcula a queda de energia do inimigo
+    // Verifica se o inimigo atirou e ajusta a direÃ§Ã£o do movimento
     double energyDrop = enemyEnergy - e.getEnergy();
-    // Se a energia do inimigo caiu, muda a direÃ§Ã£o do robÃ´
     if (energyDrop > 0 && energyDrop <= 3) {
       moveDirection = -moveDirection;
       setAhead(50 * moveDirection);
     }
-    // Atualiza a energia do inimigo
     enemyEnergy = e.getEnergy();
 
-    // Calcula a direÃ§Ã£o do radar
+    // Ajusta a direÃ§Ã£o do radar
     double radarTurn = Utils.normalRelativeAngle(absBearing - getRadarHeadingRadians());
-    // Calcula o giro extra do radar
     double extraTurn = Math.min(Math.atan(36.0 / distance), Rules.RADAR_TURN_RATE_RADIANS);
-    // Se a direÃ§Ã£o do radar for menor que 0, diminui o giro extra
     if (radarTurn < 0)
       radarTurn -= extraTurn;
     else
       radarTurn += extraTurn;
-    // Define a direÃ§Ã£o do radar
     setTurnRadarRightRadians(radarTurn);
 
-    // Se a distÃ¢ncia para o inimigo for maior que 150, move o robÃ´ para frente
+    // Ajusta a direÃ§Ã£o do movimento com base na distÃ¢ncia do inimigo
     if (distance > 150) {
         setAhead((distance / 4 + 25) * moveDirection);
     } else {
         setBack((distance / 4 + 25) * moveDirection);
     }
 
-    // Executa as aÃ§Ãµes do robÃ´
-    execute();
+    execute(); // Executa todas as aÃ§Ãµes pendentes
   }
 
-  // MÃ©todo para escolher o alvo com base na energia
+  // MÃ©todo para escolher o alvo com base na distÃ¢ncia
   private EnemyBot chooseTarget() {
     EnemyBot target = null;
     for (EnemyBot enemy : enemies.values()) {
-      if (target == null || enemy.getEnergy() < target.getEnergy()) {
+      if (target == null || enemy.getDistance() < target.getDistance()) {
         target = enemy;
       }
     }
@@ -137,14 +123,10 @@ public class GangueDaMotoca extends AdvancedRobot {
 
   // MÃ©todo chamado quando o robÃ´ atinge a parede
   public void onHitWall(HitWallEvent e) {
-    // Muda a direÃ§Ã£o do robÃ´
-    moveDirection = -moveDirection;
-    // Define a direÃ§Ã£o do robÃ´
-    setTurnRight(90 - e.getBearing());
-    // Move o robÃ´ para frente
-    setAhead(100 * moveDirection);
-    // Executa as aÃ§Ãµes do robÃ´
-    execute();
+    moveDirection = -moveDirection; // Inverte a direÃ§Ã£o do movimento
+    setTurnRight(90 - e.getBearing()); // Ajusta a direÃ§Ã£o do robÃ´
+    setAhead(100 * moveDirection); // Move o robÃ´ para frente
+    execute(); // Executa todas as aÃ§Ãµes pendentes
   }
 }
 
@@ -193,3 +175,4 @@ class EnemyBot {
     return velocity;
   }
 }
+ 	 	
